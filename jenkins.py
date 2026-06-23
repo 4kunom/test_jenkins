@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-import math
 
 DEFAULT_STAGES = [
     "Build",
@@ -12,9 +11,14 @@ DEFAULT_STAGES = [
 
 
 def validate_jenkinsfile(path, expected_stages=None):
-    expected_stages = expected_stages or DEFAULT_STAGES
-    with open(path, "r", encoding="utf-8") as file:
-        content = file.read()
+    if expected_stages is None:
+        expected_stages = DEFAULT_STAGES
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            content = file.read()
+    except FileNotFoundError:
+        print(f"Error: Jenkinsfile not found: {path}")
+        return None
 
     missing_stages = [stage for stage in expected_stages if stage not in content]
     return missing_stages
@@ -25,13 +29,15 @@ def main():
     parser.add_argument("jenkinsfile", help="Path to the Jenkinsfile to validate")
     parser.add_argument(
         "--stages",
-        nargs="*",
+        nargs="+",
         help="Expected pipeline stages to verify",
         default=DEFAULT_STAGES,
     )
     args = parser.parse_args()
 
     missing = validate_jenkinsfile(args.jenkinsfile, args.stages)
+    if missing is None:
+        return 2
     if missing:
         print("Missing expected pipeline stages:", ", ".join(missing))
         return 1
